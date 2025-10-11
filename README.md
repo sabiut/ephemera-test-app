@@ -15,3 +15,4 @@ This PR tests the automatic preview environment deployment on GKE.
 **Testing on:** Google Cloud Platform (GKE)
 **Cluster:** ephemera-dev (us-central1)
 **Domain:** *.devpreview.app
+Rebuild test
