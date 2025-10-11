@@ -15,6 +15,5 @@ This PR tests the automatic preview environment deployment on GKE.
 **Testing on:** Google Cloud Platform (GKE)
 **Cluster:** ephemera-dev (us-central1)
 **Domain:** *.devpreview.app
-Rebuild test
-Test with gcloud auth
-Final test with /opt gcloud
+
+Testing with service account authentication - full workflow test!
