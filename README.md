@@ -17,3 +17,4 @@ This PR tests the automatic preview environment deployment on GKE.
 **Domain:** *.devpreview.app
 Rebuild test
 Test with gcloud auth
+Final test with /opt gcloud
