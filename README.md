@@ -7,4 +7,7 @@ It deploys two simple services:
 - **app**: Python HTTP server on port 8000
 
 Used to test docker-compose.yml parsing and Kubernetes deployment.
-# Test PR
+
+## Testing Preview Environment
+
+This PR tests the automatic preview environment deployment on GKE.
