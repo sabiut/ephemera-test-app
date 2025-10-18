@@ -29,3 +29,4 @@ Testing with service account authentication - full workflow test!
 # Testing Ingress with HTTPS
 Testing HTTPS Ingress with cert-manager
 Final Ingress test with correct DNS
+Testing with correct devpreview.app domain
