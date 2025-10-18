@@ -26,3 +26,4 @@ This PR tests the automatic preview environment deployment on GKE.
 **Domain:** *.devpreview.app
 
 Testing with service account authentication - full workflow test!
+# Testing Ingress with HTTPS
