@@ -28,3 +28,4 @@ This PR tests the automatic preview environment deployment on GKE.
 Testing with service account authentication - full workflow test!
 # Testing Ingress with HTTPS
 Testing HTTPS Ingress with cert-manager
+Final Ingress test with correct DNS
