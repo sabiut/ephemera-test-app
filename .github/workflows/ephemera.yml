@@ -45,7 +45,21 @@ jobs:
           script: |
             const prNumber = context.payload.pull_request.number;
             const repoName = context.payload.repository.name;
-            const body = `## Preview Environment Created\n\nYour preview environment is being provisioned...\n\n**Environment URL**: Will be available at \`pr-${prNumber}-${repoName}.devpreview.app\`\n**Namespace**: \`pr-${prNumber}-${repoName}\`\n**Status**: Provisioning\n\nThis usually takes 2-3 minutes. Check back soon!\n\n---\n*Powered by Ephemera*`;
+            const namespace = `pr-${prNumber}-${repoName}`;
+            const envUrl = `https://${namespace}.devpreview.app`;
+
+            const body = `## 🚀 Preview Environment Created
+
+Your preview environment is being provisioned...
+
+**🔗 Environment URL**: ${envUrl}
+**📦 Namespace**: \`${namespace}\`
+**⏱️ Status**: Provisioning
+
+> This usually takes 2-3 minutes. The URL will be accessible once deployment completes.
+
+---
+*Powered by Ephemera*`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
