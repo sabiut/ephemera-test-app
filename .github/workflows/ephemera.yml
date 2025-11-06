@@ -1,0 +1,58 @@
+name: Preview Environment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  create-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Preview Environment
+        run: |
+          # Call Ephemera API to create preview environment
+          RESPONSE=$(curl -X POST https://ephemera-api.devpreview.app/api/v1/environments \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repository_full_name": "${{ github.repository }}",
+              "repository_name": "${{ github.event.repository.name }}",
+              "pr_number": ${{ github.event.pull_request.number }},
+              "pr_title": "${{ github.event.pull_request.title }}",
+              "branch_name": "${{ github.event.pull_request.head.ref }}",
+              "commit_sha": "${{ github.event.pull_request.head.sha }}",
+              "installation_id": 0,
+              "user_id": ${{ github.event.pull_request.user.id }},
+              "user_login": "${{ github.event.pull_request.user.login }}",
+              "user_avatar_url": "${{ github.event.pull_request.user.avatar_url }}"
+            }')
+
+          echo "API Response: $RESPONSE"
+
+          # Extract environment URL from response
+          ENV_URL=$(echo $RESPONSE | jq -r '.environment_url')
+          NAMESPACE=$(echo $RESPONSE | jq -r '.namespace')
+
+          echo "Preview Environment: $ENV_URL"
+          echo "Namespace: $NAMESPACE"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Preview Environment Created
+
+Your preview environment is being provisioned...
+
+**Environment URL**: Will be available at \`pr-${{ github.event.pull_request.number }}-${{ github.event.repository.name }}.devpreview.app\`
+**Namespace**: \`pr-${{ github.event.pull_request.number }}-${{ github.event.repository.name }}\`
+**Status**: Provisioning
+
+This usually takes 2-3 minutes. Check back soon!
+
+---
+*Powered by Ephemera*`
+            })
