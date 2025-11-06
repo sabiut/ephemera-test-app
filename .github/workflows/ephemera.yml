@@ -48,18 +48,20 @@ jobs:
             const namespace = `pr-${prNumber}-${repoName}`;
             const envUrl = `https://${namespace}.devpreview.app`;
 
-            const body = `## 🚀 Preview Environment Created
-
-Your preview environment is being provisioned...
-
-**🔗 Environment URL**: ${envUrl}
-**📦 Namespace**: \`${namespace}\`
-**⏱️ Status**: Provisioning
-
-> This usually takes 2-3 minutes. The URL will be accessible once deployment completes.
-
----
-*Powered by Ephemera*`;
+            const body = [
+              '## Preview Environment Created',
+              '',
+              'Your preview environment is being provisioned...',
+              '',
+              `**Environment URL**: ${envUrl}`,
+              `**Namespace**: \`${namespace}\``,
+              '**Status**: Provisioning',
+              '',
+              '> This usually takes 2-3 minutes. The URL will be accessible once deployment completes.',
+              '',
+              '---',
+              '*Powered by Ephemera*'
+            ].join('\n');
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
