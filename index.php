@@ -4,14 +4,14 @@ header('Content-Type: application/json');
 
 $response = [
     'app' => 'Ephemera Test App',
-    'version' => '1.3.0',
+    'version' => '1.4.0',
     'status' => 'healthy',
     'environment' => getenv('APP_ENV') ?: 'production',
     'timestamp' => date('c'),
     'hostname' => gethostname(),
     'message' => 'Hello from Ephemera preview environment!',
-    'deployment_test' => 'Testing webhook integration',
-    'webhook_status' => 'Webhook configured - testing synchronize event',
+    'deployment_test' => 'Testing GitHub Actions workflow',
+    'workflow_status' => 'Testing ephemera.yml workflow - PR approach',
     'update_timestamp' => date('Y-m-d H:i:s'),
     'features' => [
         'auto_preview_environments',
