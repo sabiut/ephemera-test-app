@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  issues: write
+  pull-requests: write
+
 jobs:
   create-preview:
     runs-on: ubuntu-latest
@@ -11,7 +15,7 @@ jobs:
       - name: Create Preview Environment
         run: |
           # Call Ephemera API to create preview environment
-          RESPONSE=$(curl -X POST https://ephemera-api.devpreview.app/api/v1/environments \
+          RESPONSE=$(curl -k -X POST https://ephemera-api.devpreview.app/api/v1/environments/ \
             -H "Content-Type: application/json" \
             -d '{
               "repository_full_name": "${{ github.repository }}",
@@ -39,20 +43,27 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const prNumber = context.payload.pull_request.number;
+            const repoName = context.payload.repository.name;
+            const namespace = `pr-${prNumber}-${repoName}`;
+            const envUrl = `https://${namespace}.devpreview.app`;
+
+            const body = `## 🚀 Preview Environment Created
+
+Your preview environment is being provisioned...
+
+**🔗 Environment URL**: ${envUrl}
+**📦 Namespace**: \`${namespace}\`
+**⏱️ Status**: Provisioning
+
+> This usually takes 2-3 minutes. The URL will be accessible once deployment completes.
+
+---
+*Powered by Ephemera*`;
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Preview Environment Created
-
-Your preview environment is being provisioned...
-
-**Environment URL**: Will be available at \`pr-${{ github.event.pull_request.number }}-${{ github.event.repository.name }}.devpreview.app\`
-**Namespace**: \`pr-${{ github.event.pull_request.number }}-${{ github.event.repository.name }}\`
-**Status**: Provisioning
-
-This usually takes 2-3 minutes. Check back soon!
-
----
-*Powered by Ephemera*`
-            })
+              body: body
+            });
