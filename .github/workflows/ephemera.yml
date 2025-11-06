@@ -39,20 +39,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const prNumber = context.payload.pull_request.number;
+            const repoName = context.payload.repository.name;
+            const body = `## Preview Environment Created\n\nYour preview environment is being provisioned...\n\n**Environment URL**: Will be available at \`pr-${prNumber}-${repoName}.devpreview.app\`\n**Namespace**: \`pr-${prNumber}-${repoName}\`\n**Status**: Provisioning\n\nThis usually takes 2-3 minutes. Check back soon!\n\n---\n*Powered by Ephemera*`;
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Preview Environment Created
-
-Your preview environment is being provisioned...
-
-**Environment URL**: Will be available at \`pr-${{ github.event.pull_request.number }}-${{ github.event.repository.name }}.devpreview.app\`
-**Namespace**: \`pr-${{ github.event.pull_request.number }}-${{ github.event.repository.name }}\`
-**Status**: Provisioning
-
-This usually takes 2-3 minutes. Check back soon!
-
----
-*Powered by Ephemera*`
-            })
+              body: body
+            });
