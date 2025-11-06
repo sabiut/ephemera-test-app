@@ -8,3 +8,4 @@ It deploys two simple services:
 
 Used to test docker-compose.yml parsing and Kubernetes deployment.
 # Testing workflow
+# Tables created
