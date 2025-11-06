@@ -15,7 +15,7 @@ jobs:
       - name: Create Preview Environment
         run: |
           # Call Ephemera API to create preview environment
-          RESPONSE=$(curl -X POST https://ephemera-api.devpreview.app/api/v1/environments/ \
+          RESPONSE=$(curl -k -X POST https://ephemera-api.devpreview.app/api/v1/environments/ \
             -H "Content-Type: application/json" \
             -d '{
               "repository_full_name": "${{ github.repository }}",
