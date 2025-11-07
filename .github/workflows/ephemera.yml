@@ -2,7 +2,7 @@ name: Preview Environment
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
 
 permissions:
   issues: write
@@ -16,6 +16,7 @@ env:
 
 jobs:
   create-preview:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -53,10 +54,23 @@ jobs:
           echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
           echo "env_url=$ENV_URL" >> $GITHUB_OUTPUT
 
+      - name: Get GCP Credentials from Ephemera
+        id: get-creds
+        run: |
+          # Fetch GCP credentials from Ephemera API using token
+          CREDS=$(curl -s -H "Authorization: Bearer ${{ secrets.EPHEMERA_TOKEN }}" \
+            https://ephemera-api.devpreview.app/api/v1/credentials/gcp | jq -r '.credentials_json')
+
+          echo "GCP credentials retrieved successfully"
+          # Save to output (masking sensitive data)
+          echo "creds<<EOF" >> $GITHUB_OUTPUT
+          echo "$CREDS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ steps.get-creds.outputs.creds }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
@@ -209,6 +223,82 @@ jobs:
               `- Docker image: \`${{ github.event.repository.name }}:pr-${prNumber}-${{ github.sha }}\``,
               `- Commit: \`${{ github.event.pull_request.head.sha }}\``,
               `- Branch: \`${{ github.event.pull_request.head.ref }}\``,
+              '',
+              '---',
+              '*Powered by Ephemera*'
+            ].join('\n');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  destroy-preview:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GCP Credentials from Ephemera
+        id: get-creds
+        run: |
+          # Fetch GCP credentials from Ephemera API using token
+          CREDS=$(curl -s -H "Authorization: Bearer ${{ secrets.EPHEMERA_TOKEN }}" \
+            https://ephemera-api.devpreview.app/api/v1/credentials/gcp | jq -r '.credentials_json')
+
+          echo "GCP credentials retrieved successfully"
+          # Save to output (masking sensitive data)
+          echo "creds<<EOF" >> $GITHUB_OUTPUT
+          echo "$CREDS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ steps.get-creds.outputs.creds }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
+            --region ${{ env.GKE_REGION }} \
+            --project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Delete Preview Environment
+        run: |
+          NAMESPACE="pr-${{ github.event.pull_request.number }}-${{ github.event.repository.name }}"
+
+          echo "Deleting preview environment: $NAMESPACE"
+
+          # Delete the namespace (this will delete all resources within it)
+          kubectl delete namespace $NAMESPACE --ignore-not-found=true
+
+          echo "Preview environment deleted successfully"
+
+      - name: Delete Environment from API
+        run: |
+          # Call Ephemera API to mark environment as deleted
+          curl -k -X DELETE https://ephemera-api.devpreview.app/api/v1/environments/${{ github.repository }}/${{ github.event.pull_request.number }}/ || true
+
+      - name: Comment on PR - Environment Destroyed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const repoName = context.payload.repository.name;
+            const namespace = `pr-${prNumber}-${repoName}`;
+
+            const body = [
+              '## Preview Environment Destroyed',
+              '',
+              'The preview environment has been cleaned up.',
+              '',
+              `**Namespace**: \`${namespace}\` (deleted)`,
+              '**Status**: Destroyed',
               '',
               '---',
               '*Powered by Ephemera*'
