@@ -153,7 +153,10 @@ jobs:
                         number: 80
           EOF
 
-      - name: Comment on PR
+          # Wait for deployment to be ready
+          kubectl rollout status deployment/${{ github.event.repository.name }} -n $NAMESPACE --timeout=5m
+
+      - name: Comment on PR - Provisioning
         uses: actions/github-script@v7
         with:
           script: |
@@ -172,6 +175,40 @@ jobs:
               '**Status**: Provisioning',
               '',
               '> This usually takes 2-3 minutes. The URL will be accessible once deployment completes.',
+              '',
+              '---',
+              '*Powered by Ephemera*'
+            ].join('\n');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Comment on PR - Deployment Complete
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const repoName = context.payload.repository.name;
+            const namespace = `pr-${prNumber}-${repoName}`;
+            const envUrl = `https://${namespace}.devpreview.app`;
+
+            const body = [
+              '## Deployment Complete',
+              '',
+              'Your preview environment is now live and ready to use!',
+              '',
+              `**Live URL**: [${envUrl}](${envUrl})`,
+              `**Namespace**: \`${namespace}\``,
+              '**Status**: Ready',
+              '',
+              '### What was deployed:',
+              `- Docker image: \`${{ github.event.repository.name }}:pr-${prNumber}-${{ github.sha }}\``,
+              `- Commit: \`${{ github.event.pull_request.head.sha }}\``,
+              `- Branch: \`${{ github.event.pull_request.head.ref }}\``,
               '',
               '---',
               '*Powered by Ephemera*'

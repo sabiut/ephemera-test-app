@@ -1,20 +1,29 @@
-FROM php:8.2-apache
+FROM python:3.11-slim
 
-# Enable Apache modules
-RUN a2enmod rewrite
+# Set working directory
+WORKDIR /app
 
-# Copy application files
-COPY index.php /var/www/html/
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy project files
+COPY . .
+
+# Run migrations and collect static files
+RUN python manage.py migrate --noinput || true
+RUN python manage.py collectstatic --noinput || true
 
 # Expose port 80
 EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost/health')" || exit 1
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Start Gunicorn server
+CMD ["gunicorn", "ephemera_app.wsgi:application", "--bind", "0.0.0.0:80", "--workers", "2"]
