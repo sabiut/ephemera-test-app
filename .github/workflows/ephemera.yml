@@ -85,11 +85,38 @@ jobs:
           NAMESPACE="${{ steps.create-env.outputs.namespace }}"
           IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/${{ github.event.repository.name }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }}"
 
-          # Create deployment
-          kubectl create deployment ${{ github.event.repository.name }} \
-            --image=$IMAGE_TAG \
-            --namespace=$NAMESPACE \
-            --dry-run=client -o yaml | kubectl apply -f - -n $NAMESPACE
+          # Create deployment with resource requests
+          cat <<EOF | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: ${{ github.event.repository.name }}
+            namespace: $NAMESPACE
+            labels:
+              app: ${{ github.event.repository.name }}
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: ${{ github.event.repository.name }}
+            template:
+              metadata:
+                labels:
+                  app: ${{ github.event.repository.name }}
+              spec:
+                containers:
+                - name: ${{ github.event.repository.name }}
+                  image: $IMAGE_TAG
+                  ports:
+                  - containerPort: 80
+                  resources:
+                    requests:
+                      cpu: "100m"
+                      memory: "128Mi"
+                    limits:
+                      cpu: "500m"
+                      memory: "512Mi"
+          EOF
 
           # Create service
           kubectl expose deployment ${{ github.event.repository.name }} \
