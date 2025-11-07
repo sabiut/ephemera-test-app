@@ -54,7 +54,6 @@ jobs:
           echo "env_url=$ENV_URL" >> $GITHUB_OUTPUT
 
       - name: Authenticate to Google Cloud
-        if: ${{ secrets.GCP_SA_KEY != '' }}
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
