@@ -8,11 +8,21 @@ permissions:
   issues: write
   pull-requests: write
 
+env:
+  GCP_PROJECT_ID: ephemera-dev-2025
+  GKE_CLUSTER: ephemera-dev
+  GKE_REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev/ephemera-dev-2025/ephemera
+
 jobs:
   create-preview:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Create Preview Environment
+        id: create-env
         run: |
           # Call Ephemera API to create preview environment
           RESPONSE=$(curl -k -X POST https://ephemera-api.devpreview.app/api/v1/environments/ \
@@ -38,6 +48,81 @@ jobs:
 
           echo "Preview Environment: $ENV_URL"
           echo "Namespace: $NAMESPACE"
+
+          # Export for next steps
+          echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
+          echo "env_url=$ENV_URL" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
+            --region ${{ env.GKE_REGION }} \
+            --project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/${{ github.event.repository.name }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }}"
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Deploy to Kubernetes
+        run: |
+          NAMESPACE="${{ steps.create-env.outputs.namespace }}"
+          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/${{ github.event.repository.name }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }}"
+
+          # Create deployment
+          kubectl create deployment ${{ github.event.repository.name }} \
+            --image=$IMAGE_TAG \
+            --namespace=$NAMESPACE \
+            --dry-run=client -o yaml | kubectl apply -f - -n $NAMESPACE
+
+          # Create service
+          kubectl expose deployment ${{ github.event.repository.name }} \
+            --port=80 \
+            --target-port=80 \
+            --namespace=$NAMESPACE \
+            --dry-run=client -o yaml | kubectl apply -f - -n $NAMESPACE
+
+          # Create ingress
+          cat <<EOF | kubectl apply -f -
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: ${{ github.event.repository.name }}
+            namespace: $NAMESPACE
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+              kubernetes.io/ingress.class: nginx
+          spec:
+            tls:
+            - hosts:
+              - $NAMESPACE.devpreview.app
+              secretName: $NAMESPACE-tls
+            rules:
+            - host: $NAMESPACE.devpreview.app
+              http:
+                paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: ${{ github.event.repository.name }}
+                      port:
+                        number: 80
+          EOF
 
       - name: Comment on PR
         uses: actions/github-script@v7
