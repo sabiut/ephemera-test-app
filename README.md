@@ -5,6 +5,7 @@ This is a test application for the Ephemera platform.
 It deploys two simple services:
 - **web**: Nginx web server on port 80
 - **app**: Python HTTP server on port 8000
+- **echo**: hashicorp/http-echo on port 5678, returns a fixed line of text
 
 Used to test docker-compose.yml parsing and Kubernetes deployment.
 # Testing workflow
