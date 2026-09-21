@@ -20,6 +20,6 @@ services:
 
   echo:
     image: hashicorp/http-echo:1.0.0
-    command: ["-listen=:5678", "-text=hello from the echo service, added in a pull request"]
+    command: ["-listen=:5678", "-text=echo text changed by a second commit, redeployed on synchronize"]
     ports:
       - "5678:5678"
