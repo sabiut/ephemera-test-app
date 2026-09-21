@@ -9,3 +9,7 @@ It deploys two simple services:
 Used to test docker-compose.yml parsing and Kubernetes deployment.
 # Testing workflow
 # Tables created
+
+## Preview test 2026-09-21
+
+Opened to exercise the recreated GKE platform end to end: webhook provisioning, the verified API create path, and the PR comment.
