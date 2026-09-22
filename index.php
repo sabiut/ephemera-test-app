@@ -4,12 +4,13 @@ header('Content-Type: application/json');
 
 $response = [
     'app' => 'Ephemera Test App',
-    'version' => '1.5.0',
+    'version' => '2.0.0',
+    'commit' => getenv('GIT_SHA') ?: 'unknown',
     'status' => 'healthy',
     'environment' => getenv('APP_ENV') ?: 'production',
     'timestamp' => date('c'),
     'hostname' => gethostname(),
-    'message' => 'Hello from Ephemera preview environment!',
+    'message' => 'Built from this commit by the preview-image workflow',
     'deployment_test' => 'Testing GitHub Actions workflow - Redis SSL fixed!',
     'workflow_status' => 'Production deployment successful',
     'update_timestamp' => date('Y-m-d H:i:s'),

@@ -1,5 +1,10 @@
 FROM php:8.2-apache
 
+# The commit this image was built from, shown on the page so a preview
+# visibly proves which code it runs.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 # Enable Apache modules
 RUN a2enmod rewrite
 

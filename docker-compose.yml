@@ -1,19 +1,18 @@
-version: '3.8'
-
 services:
+  # The app in this repository, built by .github/workflows/preview-image.yml
+  # for every commit. Ephemera substitutes the pull request's commit here.
   web:
-    image: nginx:alpine
+    build: .
+    image: ghcr.io/sabiut/ephemera-test-app:${EPHEMERA_SHA}
     ports:
       - "80:80"
     environment:
-      - NGINX_HOST=localhost
-      - NGINX_PORT=80
-
-  app:
-    image: python:3.11-alpine
-    command: python -m http.server 8000
-    ports:
-      - "8000:8000"
-    environment:
-      - PYTHONUNBUFFERED=1
       - APP_ENV=preview
+
+  # A stock image, not built from the pull request. Shows up as such in
+  # Ephemera's setup check.
+  echo:
+    image: hashicorp/http-echo:1.0.0
+    command: ["-listen=:5678", "-text=stock image, not built from this repository"]
+    ports:
+      - "5678:5678"
