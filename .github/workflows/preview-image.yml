@@ -1,0 +1,40 @@
+name: Preview image
+
+# Builds the app image for every pull request commit and every push to
+# main, tagged with the commit SHA. docker-compose.yml refers to it as
+# ghcr.io/sabiut/ephemera-test-app:${EPHEMERA_SHA}, so each Ephemera preview
+# runs exactly the code of the commit it was created for. Ephemera waits
+# for this image while the job is still running.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    env:
+      SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: GIT_SHA=${{ env.SHA }}
+          tags: ghcr.io/sabiut/ephemera-test-app:${{ env.SHA }}

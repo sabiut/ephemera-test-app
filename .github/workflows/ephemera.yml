@@ -5,65 +5,59 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  issues: write
   pull-requests: write
 
 jobs:
   create-preview:
     runs-on: ubuntu-latest
     steps:
-      - name: Create Preview Environment
+      - name: Request preview environment
+        id: request
+        env:
+          EPHEMERA_TOKEN: ${{ secrets.EPHEMERA_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Call Ephemera API to create preview environment
-          RESPONSE=$(curl -k -X POST https://ephemera-api.devpreview.app/api/v1/environments/ \
+          # Ephemera verifies the repository, the pull request and this token's
+          # owner against GitHub itself, so the request only needs to say
+          # which PR. The head commit is passed so the deploy matches this run.
+          body=$(jq -n --arg repo "$GITHUB_REPOSITORY" --argjson pr "$PR_NUMBER" --arg sha "$HEAD_SHA" \
+            '{repository_full_name: $repo, pr_number: $pr, commit_sha: $sha}')
+          response=$(curl -sS -w '\n%{http_code}' -X POST \
+            https://ephemera-api.devpreview.app/api/v1/environments/ \
+            -H "Authorization: Bearer $EPHEMERA_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "repository_full_name": "${{ github.repository }}",
-              "repository_name": "${{ github.event.repository.name }}",
-              "pr_number": ${{ github.event.pull_request.number }},
-              "pr_title": "${{ github.event.pull_request.title }}",
-              "branch_name": "${{ github.event.pull_request.head.ref }}",
-              "commit_sha": "${{ github.event.pull_request.head.sha }}",
-              "installation_id": 0,
-              "user_id": ${{ github.event.pull_request.user.id }},
-              "user_login": "${{ github.event.pull_request.user.login }}",
-              "user_avatar_url": "${{ github.event.pull_request.user.avatar_url }}"
-            }')
-
-          echo "API Response: $RESPONSE"
-
-          # Extract environment URL from response
-          ENV_URL=$(echo $RESPONSE | jq -r '.environment_url')
-          NAMESPACE=$(echo $RESPONSE | jq -r '.namespace')
-
-          echo "Preview Environment: $ENV_URL"
-          echo "Namespace: $NAMESPACE"
+            -d "$body")
+          code=$(printf '%s' "$response" | tail -n1)
+          payload=$(printf '%s' "$response" | sed '$d')
+          echo "HTTP $code"
+          printf '%s\n' "$payload" | jq . 2>/dev/null || printf '%s\n' "$payload"
+          if [ "$code" != "202" ]; then
+            echo "Ephemera did not accept the request"
+            exit 1
+          fi
+          echo "namespace=$(printf '%s' "$payload" | jq -r .namespace)" >> "$GITHUB_OUTPUT"
+          echo "url=$(printf '%s' "$payload" | jq -r .environment_url)" >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR
+        if: github.event.action != 'synchronize'
         uses: actions/github-script@v7
+        env:
+          NAMESPACE: ${{ steps.request.outputs.namespace }}
+          ENV_URL: ${{ steps.request.outputs.url }}
         with:
           script: |
-            const prNumber = context.payload.pull_request.number;
-            const repoName = context.payload.repository.name;
-            const namespace = `pr-${prNumber}-${repoName}`;
-            const envUrl = `https://${namespace}.devpreview.app`;
-
-            const body = `## 🚀 Preview Environment Created
-
-Your preview environment is being provisioned...
-
-**🔗 Environment URL**: ${envUrl}
-**📦 Namespace**: \`${namespace}\`
-**⏱️ Status**: Provisioning
-
-> This usually takes 2-3 minutes. The URL will be accessible once deployment completes.
-
----
-*Powered by Ephemera*`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const body = [
+              '## Preview environment requested',
+              '',
+              `**URL**: ${process.env.ENV_URL}`,
+              `**Namespace**: \`${process.env.NAMESPACE}\``,
+              '',
+              'Ephemera will comment again with the service links once the deployment is ready.',
+            ].join('\n');
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: body
+              issue_number: context.payload.pull_request.number,
+              body,
             });
