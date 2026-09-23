@@ -1,9 +1,11 @@
 services:
   # The app in this repository, built by .github/workflows/preview-image.yml
-  # for every commit. Ephemera substitutes the pull request's commit here.
+  # for every commit. Ephemera substitutes this repository (owner/name, in
+  # lowercase) and the pull request's commit, so a fork builds and previews
+  # its own image.
   web:
     build: .
-    image: ghcr.io/sabiut/ephemera-test-app:${EPHEMERA_SHA}
+    image: ghcr.io/${EPHEMERA_REPOSITORY}:${EPHEMERA_SHA}
     ports:
       - "80:80"
     environment:

@@ -2,9 +2,10 @@ name: Preview image
 
 # Builds the app image for every pull request commit and every push to
 # main, tagged with the commit SHA. docker-compose.yml refers to it as
-# ghcr.io/sabiut/ephemera-test-app:${EPHEMERA_SHA}, so each Ephemera preview
-# runs exactly the code of the commit it was created for. Ephemera waits
-# for this image while the job is still running.
+# ghcr.io/${EPHEMERA_REPOSITORY}:${EPHEMERA_SHA}, so each Ephemera preview
+# runs exactly the code of the commit it was created for, and a fork pushes
+# to and previews its own package. Ephemera waits for this image while the
+# job is still running.
 
 on:
   pull_request:
@@ -32,9 +33,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Registries need lowercase; GitHub keeps the owner's capitals.
+      - id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           build-args: GIT_SHA=${{ env.SHA }}
-          tags: ghcr.io/sabiut/ephemera-test-app:${{ env.SHA }}
+          tags: ${{ steps.image.outputs.name }}:${{ env.SHA }}
