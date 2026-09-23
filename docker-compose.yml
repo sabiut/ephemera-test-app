@@ -13,6 +13,8 @@ services:
   # Ephemera's setup check.
   echo:
     image: hashicorp/http-echo:1.0.0
+    labels:
+      ephemera.public: "false"
     command: ["-listen=:5678", "-text=stock image, not built from this repository"]
     ports:
       - "5678:5678"
