@@ -4,8 +4,10 @@ services:
   # lowercase) and the pull request's commit, so a fork builds and previews
   # its own image.
   web:
-    build: .
-    image: ghcr.io/${EPHEMERA_REPOSITORY}:${EPHEMERA_SHA}
+    build:
+      context: .
+      args:
+        GIT_SHA: ${EPHEMERA_SHA}
     ports:
       - "80:80"
     environment:
